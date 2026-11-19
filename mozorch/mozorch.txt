@@ -1,0 +1,817 @@
+// MozORCH v0.12
+@Description
+MozORCH v0.12 - Orchid-style chord player.
+Top: Dim Min Maj Sus | Latch Chord | Oct + | Scale | XY
+Bottom: 6 m7 M7 9 | Hold Note In | Oct - | (free) | Panic
+Combos: press two types together - Dim+Maj aug, Maj+Sus sus2, Min+Maj 5th, Dim+Sus quartal.
+MIDI notes 24 26 28 29 31 33 35 36 mirror the 8 chord buttons.
+Notes above 36 set the root. Last note wins.
+K0 voicing, K1 notes, K2 bass, K3 key.
+Shift or XY pad: XY view.
+  Top knobs: Voicing Notes Bass Key | X CC
+  Bottom knobs: Change Quant Vel | XY send | Y CC
+Vel: every note 108, turning up spreads each note randomly downwards (incoming velocity ignored).
+Quant: chord presses snap to off / 1 / 2 / 4 / 8 / 16 per bar while the host is running.
+@End
+
+// ---- setup ----
+@OnLoad
+  // triad rows: Dim Min Maj Sus, then combo chords Aug Sus2 5th Quartal
+  typeIv = [0,3,6, 0,3,7, 0,4,7, 0,5,7, 0,4,8, 0,2,7, 0,7,7, 0,5,10]
+  // active-type bitmask (Dim 1, Min 2, Maj 4, Sus 8) -> typeIv row, -1 = none
+  typeMap = [-1,0,1,0,2,4,6,0,3,7,1,0,5,0,1,0]
+  bits = [1,2,4,8]
+  // extension intervals: 6 m7 M7 9
+  extIv = [9,10,11,14]
+  // own scale masks from the tonic (Mozaic's scale functions misbehaved):
+  // Major, Harmonic minor, Melodic minor
+  scaleTab = [1,0,1,0,1,1,0,1,0,1,0,1, 1,0,1,1,0,1,0,1,1,0,0,1, 1,0,1,1,0,1,0,1,0,1,0,1]
+  // controller notes acting as the 8 chord buttons
+  btnNote = [24,26,28,29,31,33,35,36]
+  splitTop = 36 // roots must be above this
+
+  // button -> pad; use [8,9,10,11,0,1,2,3] if the rows come out upside down
+  btnPad = [0,1,2,3,8,9,10,11]
+  FillArray padBtn, -1, 16
+  for i = 0 to 7
+    tmp = btnPad[i]
+    padBtn[tmp] = i
+  endfor
+  // function pads, grouped in columns
+  fnLatch = 4
+  fnOctUp = 5
+  fnOctDn = 13
+  fnScale = 6
+  fnHold = 12
+  fnView = 7
+  fnPanic = 15
+
+  // transient state - nothing is sounding after a load
+  FillArray padHeld, 0, 8
+  FillArray btnHeld, 0, 8
+  active = -1 // current root note, -1 = silent
+  rootDown = NO // root key physically held
+  // quantise queue: root waiting to fire, root waiting to release, pending change
+  pendRoot = -1
+  pendRelNote = -1
+  pendRetrig = NO
+  lastG = -1
+  qDivs = [0,1,2,4,8,16]
+  SetMetroPPQN 24 // 24 per beat divides every grid in 4/4 and 3/4
+  outN = 0 // number of notes currently sounding
+  ch = 0 // channel of the current chord
+  debug = NO // YES logs every built chord and sent note to Mozaic's log window
+
+  // persistent state (saved with preset/project).
+  // each defaulted on its own: state saved by an older build restores
+  // 'init' but not variables added since, and an unassigned variable
+  // is a runtime error the first time MIDI touches it
+  if Unassigned latched
+    FillArray latched, 0, 8
+  endif
+  if Unassigned latchMode
+    latchMode = NO
+  endif
+  if Unassigned holdMode
+    holdMode = NO
+  endif
+  if Unassigned octShift
+    octShift = 0
+  endif
+  if Unassigned scaleSel
+    scaleSel = 0
+  endif
+  if Unassigned view
+    view = 2
+  endif
+
+  // knob defaults, first run only
+  if Unassigned init
+    init = YES
+    SetKnobValue 0, 64
+    SetKnobValue 1, 0
+    SetKnobValue 2, 0
+    SetKnobValue 3, 0
+    SetKnobValue 4, 74
+  endif
+  // knob layout v2 - reseed the moved XY / change knobs once
+  if Unassigned knobsV2
+    knobsV2 = YES
+    SetKnobValue 5, 127
+    SetKnobValue 6, 0
+    SetKnobValue 7, 0
+    SetKnobValue 8, 0
+    SetKnobValue 9, 71
+  endif
+
+  ShowLayout view
+  SetShortName {MozORCH}
+
+  // tints: chord section cool (types blue, extensions lavender),
+  // all controls neutral white, panic the only warm colour
+  for i = 0 to 3
+    tmp = btnPad[i]
+    ColorPad tmp, 4
+    tmp = btnPad[i + 4]
+    ColorPad tmp, 5
+  endfor
+  ColorPad fnLatch, 0
+  ColorPad fnOctUp, 0
+  ColorPad fnOctDn, 0
+  ColorPad fnScale, 0
+  ColorPad fnHold, 0
+  ColorPad fnView, 0
+  ColorPad fnPanic, 1
+
+  LabelPad 0, {Dim}
+  LabelPad 1, {Min}
+  LabelPad 2, {Maj}
+  LabelPad 3, {Sus}
+  LabelPad 8, {6}
+  LabelPad 9, {m7}
+  LabelPad 10, {M7}
+  LabelPad 11, {9}
+  LabelPad fnLatch, {Latch Chord}
+  LabelPad 14, { } // free
+  LatchPad 14, NO // may still be lit from the old Hold position
+  LabelPad fnOctUp, {Oct +}
+  LabelPad fnOctDn, {Oct -}
+  LabelPad fnHold, {Hold Note In}
+  LabelPad fnView, {XY}
+  LabelPad fnPanic, {Panic}
+  LabelXY {XY CCs}
+  LabelPads {MozORCH v0.12}
+  // ReadKnobs sets keySel, then labels the Scale pad itself
+  Call @ReadKnobs
+  Call @Lights
+@End
+
+// ---- knobs: map 0-127 to stepped values and label ----
+@ReadKnobs
+  k = GetKnobValue 0
+  voicing = Round (k * 16 / 127) // -8..+8
+  voicing = voicing - 8
+  k = GetKnobValue 1
+  noteSel = Round (k * 5 / 127) // 0 = auto, 1-5 = 3-7 notes
+  k = GetKnobValue 2
+  bassSel = Round (k * 2 / 127) // off / low / mid
+  k = GetKnobValue 3
+  keySel = Round (k * 12 / 127) // 0 = off, 1-12 = C-B tonic
+  k = GetKnobValue 4
+  ccX = Round k
+  k = GetKnobValue 9
+  ccY = Round k
+  k = GetKnobValue 8
+  xySel = Round (k * 2 / 127) // both / X only / Y only
+  k = GetKnobValue 6
+  qSel = Round (k * 5 / 127) // index into qDivs
+  qDiv = qDivs[qSel]
+  k = GetKnobValue 7
+  velSpread = Round (k * 107 / 127) // 0..107 below 108
+  k = GetKnobValue 5
+  chgSel = Round (k / 127) // button/knob changes: 0 = legato, 1 = replay whole chord
+
+  LabelKnob 0, {Voicing }, voicing
+  if noteSel = 0
+    LabelKnob 1, {Notes auto}
+  else
+    tmp = noteSel + 2
+    LabelKnob 1, {Notes }, tmp
+  endif
+  if bassSel = 0
+    LabelKnob 2, {Bass off}
+  elseif bassSel = 1
+    LabelKnob 2, {Bass low}
+  else
+    LabelKnob 2, {Bass mid}
+  endif
+  if keySel = 0
+    LabelKnob 3, {Key off}
+  else
+    tmp = keySel - 1
+    LabelKnob 3, {Key }, (NoteName tmp, NO)
+  endif
+  LabelKnob 4, {X CC }, ccX
+  LabelKnob 9, {Y CC }, ccY
+  if xySel = 0
+    LabelKnob 8, {XY both}
+  elseif xySel = 1
+    LabelKnob 8, {X only}
+  else
+    LabelKnob 8, {Y only}
+  endif
+  if chgSel = 0
+    LabelKnob 5, {Legato}
+  else
+    LabelKnob 5, {Replay}
+  endif
+  if velSpread = 0
+    LabelKnob 7, {Vel 108}
+  else
+    tmp = 108 - velSpread
+    LabelKnob 7, {Vel }, tmp, {-108}
+  endif
+  if qDiv = 0
+    LabelKnob 6, {Qnt off}
+  else
+    LabelKnob 6, {Qnt 1/}, qDiv
+  endif
+  Call @ScaleLabel
+@End
+
+// only update the chord when a chord knob's stepped value changes
+@OnKnobChange
+  pv = voicing
+  pn = noteSel
+  pb = bassSel
+  pk = keySel
+  pq = qDiv
+  Call @ReadKnobs
+  // quantise switched off: flush anything still queued
+  if (pq > 0) and (qDiv = 0)
+    Call @Flush
+  endif
+  if (pv <> voicing) or (pn <> noteSel) or (pb <> bassSel) or (pk <> keySel)
+    Call @RequestRetrig
+  endif
+@End
+
+// ---- XY: ad hoc CCs on the chord's channel ----
+// single-axis modes exist so a destination's MIDI learn grabs the right CC
+@OnXYChange
+  if xySel <> 2
+    tmp = Round GetXValue
+    SendMIDICC ch, ccX, tmp
+  endif
+  if xySel <> 1
+    tmp = Round GetYValue
+    SendMIDICC ch, ccY, tmp
+  endif
+@End
+
+// ---- views: pads (layout 2) and XY (layout 0, pads 0-3 = types) ----
+@OnShiftDown
+  Call @ToggleView
+@End
+
+@ToggleView
+  if view = 2
+    view = 0
+  else
+    view = 2
+  endif
+  ShowLayout view
+@End
+
+// ---- pads ----
+@OnPadDown
+  p = LastPad
+  bi = padBtn[p]
+  if bi >= 0
+    padHeld[bi] = 1
+    Call @PressBtn
+  elseif p = fnLatch
+    Call @ToggleLatch
+  elseif p = fnOctDn
+    if octShift > -2
+      octShift = octShift - 1
+      Call @RequestRetrig
+    endif
+  elseif p = fnOctUp
+    if octShift < 2
+      octShift = octShift + 1
+      Call @RequestRetrig
+    endif
+  elseif p = fnScale
+    scaleSel = scaleSel + 1
+    if scaleSel > 2
+      scaleSel = 0
+    endif
+    Call @ScaleLabel
+    if keySel > 0
+      Call @RequestRetrig
+    endif
+  elseif p = fnHold
+    // chord keeps sounding after the root key is released
+    holdMode = NOT holdMode
+    if (holdMode = NO) and (rootDown = NO)
+      Call @Release
+      active = -1
+    endif
+    Call @Lights
+  elseif p = fnView
+    Call @ToggleView
+  elseif p = fnPanic
+    Call @Panic
+  endif
+@End
+
+@OnPadUp
+  p = LastPad
+  bi = padBtn[p]
+  if bi >= 0
+    padHeld[bi] = 0
+    Call @ReleaseBtn
+  endif
+@End
+
+// ---- chord buttons, shared by pads and MIDI notes; bi = button ----
+// held state is always tracked - latch uses it to detect combo presses
+@PressBtn
+  if latchMode
+    if bi < 4
+      // another type physically down = combo, so add;
+      // otherwise radio: replace the latched type (tap it again to clear)
+      other = NO
+      for i = 0 to 3
+        if (i <> bi) and (padHeld[i] or btnHeld[i])
+          other = YES
+        endif
+      endfor
+      if other
+        latched[bi] = 1
+      else
+        only = latched[bi]
+        for i = 0 to 3
+          if (i <> bi) and latched[i]
+            only = NO
+          endif
+          latched[i] = 0
+        endfor
+        if only = NO
+          latched[bi] = 1
+        endif
+      endif
+    else
+      // extensions stack, so they just toggle
+      latched[bi] = NOT latched[bi]
+      // m7 and M7 are alternatives, not a stack
+      if latched[bi] and (bi = 5)
+        latched[6] = 0
+      elseif latched[bi] and (bi = 6)
+        latched[5] = 0
+      endif
+    endif
+  endif
+  Call @Lights
+  Call @RequestRetrig
+@End
+
+@ReleaseBtn
+  if latchMode = NO
+    Call @Lights
+    Call @RequestRetrig
+  endif
+@End
+
+// entering latch keeps whatever is held; leaving clears
+@ToggleLatch
+  latchMode = NOT latchMode
+  for bi = 0 to 7
+    latched[bi] = 0
+    if latchMode and (padHeld[bi] or btnHeld[bi])
+      latched[bi] = 1
+    endif
+  endfor
+  Call @Lights
+  Call @RequestRetrig
+@End
+
+// sets 'on' for button bi from latch or held state
+@BtnOn
+  on = NO
+  if latchMode
+    if latched[bi]
+      on = YES
+    endif
+  elseif padHeld[bi] or btnHeld[bi]
+    on = YES
+  endif
+@End
+
+@Lights
+  for bi = 0 to 7
+    Call @BtnOn
+    tmp = btnPad[bi]
+    LatchPad tmp, on
+  endfor
+  LatchPad fnLatch, latchMode
+  LatchPad fnHold, holdMode
+@End
+
+@ScaleLabel
+  if keySel = 0
+    LabelPad fnScale, {Scale (key off)}
+  elseif scaleSel = 0
+    LabelPad fnScale, {Scale Maj}
+  elseif scaleSel = 1
+    LabelPad fnScale, {Scale HMin}
+  else
+    LabelPad fnScale, {Scale MMin}
+  endif
+@End
+
+// ---- MIDI in: button notes change the chord, higher notes set the root ----
+@OnMidiNoteOn
+  n = MIDINote
+  Call @FindButton
+  if b >= 0
+    bi = b
+    btnHeld[bi] = 1
+    Call @PressBtn
+  elseif n > splitTop
+    rootDown = YES
+    Call @Quantising
+    if quant
+      // wait for the next grid point
+      pendRoot = n
+      pendVel = MIDIVelocity
+      pendCh = MIDIChannel
+    else
+      // new root replaces the old chord (last note wins)
+      Call @Release
+      active = n
+      vel = MIDIVelocity
+      ch = MIDIChannel
+      Call @Build
+      Call @SendAll
+    endif
+  endif
+@End
+
+@OnMidiNoteOff
+  n = MIDINote
+  Call @FindButton
+  if b >= 0
+    bi = b
+    btnHeld[bi] = 0
+    Call @ReleaseBtn
+  // ignore offs from roots already replaced
+  elseif (n = active) or (n = pendRoot)
+    rootDown = NO
+    if holdMode = NO
+      Call @Quantising
+      if quant
+        // release on a grid point (a root released before it fired
+        // still sounds for one grid step)
+        pendRelNote = n
+      else
+        Call @Release
+        active = -1
+      endif
+    endif
+  endif
+@End
+
+// CCs through (sustain, mod wheel etc)
+@OnMidiCC
+  SendMIDIThru
+@End
+
+// pitchbend and channel pressure through; poly AT dropped (keyed to root, not chord)
+@OnMidiInput
+  if (MIDICommand = 0xE0) or (MIDICommand = 0xD0)
+    SendMIDIThru
+  endif
+@End
+
+// sets b to the button index for note n, or -1
+@FindButton
+  b = -1
+  for i = 0 to 7
+    if n = btnNote[i]
+      b = i
+    endif
+  endfor
+@End
+
+// ---- quantise ----
+// sets quant: queue events instead of acting now
+@Quantising
+  quant = NO
+  if (qDiv > 0) and HostRunning
+    quant = YES
+  endif
+@End
+
+@RequestRetrig
+  Call @Quantising
+  if debug
+    Log {request quant }, quant, { q/bar }, qDiv, { active }, active, { change }, chgSel
+  endif
+  if quant
+    pendRetrig = YES
+  else
+    Call @Retrigger
+  endif
+@End
+
+// fire on grid boundaries; CurrentMetroPulse resets every bar
+@OnMetroPulse
+  if qDiv > 0
+    bp = HostBeatsPerMeasure
+    if bp < 1
+      bp = 4
+    endif
+    cp = CurrentMetroPulse
+    g = RoundDown (cp * qDiv / (24 * bp))
+    if (cp = 0) or (g <> lastG)
+      lastG = g
+      Call @GridStep
+    endif
+  endif
+@End
+
+// one grid point: a new root wins, else a pending release, else a pending change
+@GridStep
+  if debug and ((pendRoot >= 0) or (pendRelNote >= 0) or pendRetrig)
+    Log {grid root }, pendRoot, { release }, pendRelNote, { change }, pendRetrig
+  endif
+  if pendRoot >= 0
+    Call @Release
+    active = pendRoot
+    vel = pendVel
+    ch = pendCh
+    Call @Build
+    Call @SendAll
+    // keep a release only if it belongs to the root that just fired
+    if pendRelNote <> pendRoot
+      pendRelNote = -1
+    endif
+    pendRoot = -1
+    pendRetrig = NO
+  elseif pendRelNote >= 0
+    if pendRelNote = active
+      Call @Release
+      active = -1
+    endif
+    pendRelNote = -1
+    pendRetrig = NO
+  elseif pendRetrig
+    Call @Retrigger
+    pendRetrig = NO
+  endif
+@End
+
+// transport stopped or quantise turned off: nothing may stay queued
+@Flush
+  Call @GridStep
+  Call @GridStep
+@End
+
+@OnHostStop
+  Call @Flush
+@End
+
+// ---- sending ----
+// per-note velocity: 108 minus a random amount up to velSpread
+@NoteVel
+  nv = 108
+  if velSpread > 0
+    r = Random 0, velSpread
+    nv = 108 - (Round r)
+  endif
+@End
+
+// legato mode: only notes that leave get an off, only new notes get an on,
+// shared tones keep sounding without a new attack
+@Retrigger
+  // replay mode: whole chord re-attacks, like the Orchid's Play Chord option
+  if (active >= 0) and (chgSel = 1)
+    Call @Release
+    Call @Build
+    Call @SendAll
+  elseif active >= 0
+    CopyArray out, prev
+    prevN = outN
+    Call @Build
+    if prevN > 0
+      for i = 0 to prevN - 1
+        keep = NO
+        if outN > 0
+          for k = 0 to outN - 1
+            if out[k] = prev[i]
+              keep = YES
+            endif
+          endfor
+        endif
+        if keep = NO
+          SendMIDINoteOff ch, prev[i], 0
+          if debug
+            Log {retrig off }, prev[i]
+          endif
+        endif
+      endfor
+    endif
+    if outN > 0
+      for k = 0 to outN - 1
+        isNew = YES
+        if prevN > 0
+          for i = 0 to prevN - 1
+            if prev[i] = out[k]
+              isNew = NO
+            endif
+          endfor
+        endif
+        if isNew
+          Call @NoteVel
+          SendMIDINoteOn ch, out[k], nv
+          if debug
+            Log {retrig on }, out[k], { vel }, nv
+          endif
+        endif
+      endfor
+    endif
+  endif
+@End
+
+@SendAll
+  if outN > 0
+    for i = 0 to outN - 1
+      Call @NoteVel
+      SendMIDINoteOn ch, out[i], nv
+      if debug
+        Log {on }, out[i], { vel }, nv
+      endif
+    endfor
+  endif
+@End
+
+// note-offs replay exactly what was sent - never recomputed,
+// because the buttons may have changed since note-on
+@Release
+  if outN > 0
+    for i = 0 to outN - 1
+      SendMIDINoteOff ch, out[i], 0
+      if debug
+        Log {off }, out[i]
+      endif
+    endfor
+  endif
+  outN = 0
+@End
+
+@Panic
+  pendRoot = -1
+  pendRelNote = -1
+  pendRetrig = NO
+  Call @Release
+  active = -1
+  rootDown = NO
+  for c = 0 to 15
+    SendMIDICC c, 123, 0
+  endfor
+@End
+
+// sets ik (1/0): is note q in the current key (tonic + scaleSel)
+@InKey
+  tmp3 = (q - tonic + 120) % 12
+  tmp3 = tmp3 + (scaleSel * 12)
+  ik = scaleTab[tmp3]
+@End
+
+// ---- build the chord for 'active' into out[] (does not send) ----
+@Build
+  // Oct +/- transposes the input root; voicing is applied after
+  root = active + (12 * octShift)
+
+  // key mode: snap root into the key
+  if keySel > 0
+    tonic = keySel - 1
+    q = root
+    Call @InKey
+    guard = 0
+    while (ik = 0) and (guard < 12)
+      root = root + 1
+      q = root
+      Call @InKey
+      guard = guard + 1
+    endwhile
+  endif
+
+  // chord type from the bitmask of active type buttons
+  mask = 0
+  for bi = 0 to 3
+    Call @BtnOn
+    if on
+      mask = mask + bits[bi]
+    endif
+  endfor
+  t = typeMap[mask]
+
+  // pitch-class set relative to root - dedupes and sorts in one pass
+  FillArray pc, 0, 12
+  pc[0] = 1
+  if t >= 0
+    j = t * 3
+    tmp = typeIv[j + 1]
+    pc[tmp] = 1
+    tmp = typeIv[j + 2]
+    pc[tmp] = 1
+  // no button + key mode: diatonic triad from the scale
+  elseif keySel > 0
+    // stack scale thirds: third = 2nd scale note above root, fifth = 4th
+    found = 0
+    step = 0
+    while (found < 4) and (step < 24)
+      step = step + 1
+      q = root + step
+      Call @InKey
+      if ik
+        found = found + 1
+        if found = 2
+          tmp = step % 12
+          pc[tmp] = 1
+        elseif found = 4
+          tmp = step % 12
+          pc[tmp] = 1
+        endif
+      endif
+    endwhile
+  // no button, no key: major
+  else
+    pc[4] = 1
+    pc[7] = 1
+  endif
+
+  // extensions stack on top, 9th folds to pitch class 2
+  for bi = 4 to 7
+    Call @BtnOn
+    if on
+      tmp = extIv[bi - 4] % 12
+      pc[tmp] = 1
+    endif
+  endfor
+
+  // read set back out as ascending intervals
+  nPc = 0
+  for i = 0 to 11
+    if pc[i]
+      iv[nPc] = i
+      Inc nPc
+    endif
+  endfor
+
+  // how many rungs of the ladder to take
+  count = nPc
+  if noteSel > 0
+    count = noteSel + 2
+  endif
+
+  // voicing walk: infinite ascending ladder of chord tones,
+  // take count consecutive rungs starting at rung 'voicing'
+  outN = 0
+  for k = 0 to count - 1
+    idx = voicing + k
+    // RoundDown truncates towards zero - correct to floor for negative rungs
+    oct = RoundDown (idx / nPc)
+    if (oct * nPc) > idx
+      oct = oct - 1
+    endif
+    j = idx - (oct * nPc)
+    note = root + iv[j] + (12 * oct)
+    if (note >= 0) and (note <= 127)
+      out[outN] = note
+      Inc outN
+    endif
+  endfor
+
+  // bass: root in a fixed low octave, skipped if it would overlap the chord
+  if (bassSel > 0) and (outN > 0)
+    bn = (root % 12) + (12 * (bassSel + 2))
+    if bn < out[0]
+      out[outN] = bn
+      Inc outN
+    endif
+  endif
+
+  if debug
+    Log {build root }, root, { mask }, mask, { type }, t, { notes }, outN
+  endif
+  Call @ShowChord
+@End
+
+// root and type above the pads
+@ShowChord
+  if t = 0
+    LabelPads {MozORCH  }, (NoteName root, YES), { dim}
+  elseif t = 1
+    LabelPads {MozORCH  }, (NoteName root, YES), { min}
+  elseif t = 2
+    LabelPads {MozORCH  }, (NoteName root, YES), { maj}
+  elseif t = 3
+    LabelPads {MozORCH  }, (NoteName root, YES), { sus4}
+  elseif t = 4
+    LabelPads {MozORCH  }, (NoteName root, YES), { aug}
+  elseif t = 5
+    LabelPads {MozORCH  }, (NoteName root, YES), { sus2}
+  elseif t = 6
+    LabelPads {MozORCH  }, (NoteName root, YES), { 5}
+  elseif t = 7
+    LabelPads {MozORCH  }, (NoteName root, YES), { 4ths}
+  elseif keySel > 0
+    LabelPads {MozORCH  }, (NoteName root, YES), { in key}
+  else
+    LabelPads {MozORCH  }, (NoteName root, YES), { maj}
+  endif
+@End
