@@ -10,9 +10,9 @@ macOS only.
 
 ## usage
 
-- Put `ableton-themes-installer.sh` in your themes folder
+- Put `ableton-themes-installer.command` in your themes folder
 - Quit Live
-- Run it: right-click > Open, or `bash ableton-themes-installer.sh` from that folder
+- Run it: double-click in Finder, right-click > Open, or `bash ableton-themes-installer.command` from that folder
 
 ---
 
