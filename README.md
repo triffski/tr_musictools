@@ -1,6 +1,6 @@
 # tr_musictools
 
-Small music tools - scripts, presets and utilities. One folder per tool, each with its own README.
+Lil' music tools - scripts, presets and utilities. 
 
 ## tools
 
