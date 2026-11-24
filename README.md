@@ -2,11 +2,13 @@
 
 Lil' music tools - scripts, presets and utilities. 
 
+Live at **https://gh.triff.co** - theme-o-matic runs in the browser at [gh.triff.co/theme-o-matic](https://gh.triff.co/theme-o-matic/).
+
 ## tools
 
 | tool | what | runs in | status |
 |---|---|---|---|
-| [ableton-theme-o-matic](ableton-theme-o-matic/) | Browser editor/generator for Live 12 `.ask` themes - HSV-driven, live preview, palette-from-photo | browser, offline | stable |
+| [theme-o-matic](theme-o-matic/) | Browser editor/generator for Live 12 `.ask` themes - HSV-driven, live preview, palette-from-photo | browser, offline | stable |
 | [ableton-theme-backup-restore](ableton-theme-backup-restore/) | Back up / restore Live 12 themes around updates, with version-aware restore | macOS + Windows | stable |
 | [mozorch](mozorch/) | Orchid-style chord player: one note in, voiced chord out | Mozaic (iOS AUv3) | v0.12 |
 

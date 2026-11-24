@@ -1,4 +1,4 @@
-# ableton-theme-o-matic
+# theme-o-matic
 
 A single-file browser editor/generator for Ableton Live 12 `.ask` themes. Open the HTML in any browser - nothing to install, no build, works offline.
 
@@ -10,10 +10,10 @@ Instead of hand-editing ~290 raw colour keys, it drives the whole UI from a hand
 
 ## usage
 
-- Download or open `ableton-theme-o-matic.html` in a browser
+- Live at **https://gh.triff.co/theme-o-matic/**, or open `index.html` in a browser
 - **Load .ask** a theme, or **Browse folder** to step through a folder of them
-- Edit, then **Save .ask** 
-- Drop the saved file in Live's Themes folder (the `ableton-themes-installer` tool in this repo can restore them after an update)
+- Edit, then **Save .ask**
+- Drop the saved file in Live's Themes folder (the `ableton-theme-backup-restore` tool in this repo can restore them after an update)
 
 ---
 
