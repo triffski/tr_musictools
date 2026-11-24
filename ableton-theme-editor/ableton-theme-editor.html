@@ -35,7 +35,7 @@ h1{font-size:14px;margin:0;font-weight:600;letter-spacing:.3px;white-space:nowra
 .navbtn:hover:not(:disabled){border-color:#555}
 .navbtn:disabled{opacity:.4;cursor:default}
 .pos{font-family:var(--mono);color:var(--dim);min-width:58px;text-align:center;font-size:12px}
-.themelist{display:flex;gap:6px;overflow-x:auto;flex:1;min-width:0;padding-bottom:11px;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+.themelist{display:flex;gap:6px;overflow-x:auto;flex:1;min-width:0;height:40px;align-items:center;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
 .themelist::-webkit-scrollbar{height:7px}
 .themelist::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
 .themelist::-webkit-scrollbar-track{background:transparent}
@@ -47,7 +47,7 @@ h1{font-size:14px;margin:0;font-weight:600;letter-spacing:.3px;white-space:nowra
 .main{display:flex;flex:1;min-height:0}
 .pane{overflow-y:auto;min-height:0}
 .simple-pane{width:360px;flex:none;border-right:1px solid var(--line);padding:14px}
-.preview-pane{flex:1;min-width:0;background:#111;display:flex;flex-direction:column;align-items:center;padding:18px;overflow-y:auto}
+.preview-pane{flex:1;min-width:0;background:#111;display:flex;flex-direction:column;align-items:center;padding:18px;overflow:auto}
 .pane-title{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--dim);margin:0 0 10px;font-weight:600}
 .pvtitle{align-self:flex-start;margin:0 0 10px}
 .adv-pane{width:360px;flex:none;border-left:1px solid var(--line);padding:12px;display:flex;flex-direction:column}
@@ -100,7 +100,7 @@ details.sec>summary .n{color:var(--dim);font-weight:400;font-size:11px;margin-le
 .row .val{width:90px;background:#1a1a1a;border:1px solid var(--line);border-radius:4px;padding:4px 6px;font-family:var(--mono);font-size:11px;flex:none}
 
 /* ===== PREVIEW: mock Session view, themed from --t-* vars ===== */
-#pv{width:100%;max-width:960px;border:1px solid #000;border-radius:4px;overflow:hidden;font-size:11px;
+#pv{width:1100px;flex:none;border:1px solid #000;border-radius:4px;overflow:hidden;font-size:11px;
   background:var(--t-Desktop,#393939);color:var(--t-ControlForeground,#e0e0e0);font-family:var(--sans);user-select:none;display:flex;flex-direction:column}
 #pv .bar{display:flex;align-items:center;gap:9px;padding:6px 10px;background:var(--t-SurfaceBackground,#4f4f4f);border-bottom:1px solid var(--t-ControlContrastFrame,#151515)}
 #pv .dot{width:13px;height:13px;border-radius:50%}
@@ -218,10 +218,12 @@ details.sec>summary .n{color:var(--dim);font-weight:400;font-size:11px;margin-le
 #imgpanel canvas{display:block;width:100%;border-radius:5px}
 #imgpanel .dot{position:absolute;width:19px;height:19px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1.5px rgba(0,0,0,.6),0 1px 3px rgba(0,0,0,.5);transform:translate(-50%,-50%);cursor:grab;touch-action:none;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;text-shadow:0 1px 2px #000,0 0 2px #000}
 #imgpanel .dot:active{cursor:grabbing}
-#imgpanel .strip{display:flex;gap:0;margin-top:8px;border-radius:5px;overflow:hidden;height:38px}
-#imgpanel .strip i{flex:1;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
-#imgpanel .strip i b{font-size:9px;font-weight:700;color:#fff;text-shadow:0 1px 2px #000,0 0 2px #000}
-#imgpanel .strip i span{font-size:7px;font-family:var(--mono);color:#fff;text-shadow:0 1px 2px #000,0 0 2px #000;text-align:center;line-height:1;padding:0 1px}
+#imgpanel .strip{display:flex;gap:4px;margin-top:8px}
+#imgpanel .strip .sw{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+#imgpanel .strip .sw .col{height:26px;border-radius:4px;display:flex;align-items:center;justify-content:center;position:relative;box-shadow:inset 0 0 0 1px rgba(0,0,0,.35)}
+#imgpanel .strip .sw .col b{font-size:9px;font-weight:700;color:#fff;text-shadow:0 1px 2px #000,0 0 2px #000}
+#imgpanel .strip .sw .col .x{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;background:rgba(0,0,0,.4);text-shadow:0 1px 2px #000;border-radius:4px}
+#imgpanel .strip .sw label{font-size:9px;color:var(--dim);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1}
 #imgpanel .gen{margin-top:9px;width:100%}
 
 /* sample / audio clip editor */
@@ -276,7 +278,7 @@ details.sec>summary .n{color:var(--dim);font-weight:400;font-size:11px;margin-le
 <body>
 <div class="app">
   <div class="toolbar">
-    <h1>Live&nbsp;12 Theme Editor</h1>
+    <h1>Live&nbsp;12 Theme Generator</h1>
     <button class="btn" id="browseFolder">Browse folder&hellip;</button>
     <input id="loadfolder" type="file" webkitdirectory directory multiple hidden>
     <button id="prevTheme" class="navbtn" title="Previous (left arrow)" disabled>&lsaquo;</button>
@@ -296,26 +298,26 @@ details.sec>summary .n{color:var(--dim);font-weight:400;font-size:11px;margin-le
       <h2 class="pane-title">Basic</h2>
       <div class="grp">
         <h3>Surfaces</h3>
-        <p>The whole panel family is one base colour plus a lightness ladder (~9 rungs). These drive every surface at once, relative to the loaded theme, so a neutral grey can still be tinted. Contrast spreads or compresses the ladder around the base.</p>
-        <div class="sliderrow"><label>Hue</label><input type="range" class="grad" id="surfH" min="-180" max="180" value="0" style="background:linear-gradient(90deg,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000)"><span class="val" id="surfHv">0&deg;</span><span class="rowsw" id="surfHueSw" title="Resulting hue at full saturation"></span></div>
-        <div class="sliderrow"><label>Saturation</label><input type="range" class="grad" id="surfS" min="-100" max="100" value="0"><span class="val" id="surfSv">0</span><span class="rowsw" id="surfSSw" title="Grey to current hue"></span></div>
+        <p>Generate a theme from a base colour map it across all of Live. Adjust the global Hue and Saturation then use Brightness and Contrast to raise/lower and squash/expand the brightness.</p>
+        <div class="sliderrow"><label>Hue</label><input type="range" class="grad" id="surfH" min="0" max="360" value="0" style="background:linear-gradient(90deg,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000)"><span class="val" id="surfHv">0&deg;</span><span class="rowsw" id="surfHueSw" title="Base hue at full saturation"></span></div>
+        <div class="sliderrow"><label>Saturation</label><input type="range" class="grad" id="surfS" min="0" max="100" value="0"><span class="val" id="surfSv">0</span><span class="rowsw" id="surfSSw" title="Grey to full hue"></span></div>
         <div class="sliderrow"><label>Brightness</label><input type="range" class="grad" id="surfL" min="-40" max="40" value="0" style="background:linear-gradient(90deg,#0a0a0a,#f0f0f0)"><span class="val" id="surfLv">0</span><span class="rowsw" id="surfLSw" title="Dark to light"></span></div>
         <div class="sliderrow"><label>Contrast</label><input type="range" class="grad" id="surfC" min="-60" max="60" value="0" style="background:linear-gradient(90deg,#5b5b5b,#2a2a2a 50%,#f0f0f0)"><span class="val" id="surfCv">0</span><span class="rowsw" id="surfCSw" title="Ladder spread"></span></div>
         <button class="reset" data-reset="surface">reset</button>
       </div>
       <div class="grp">
         <h3>Text</h3>
-        <p>Shifts the whole text ladder brightness, keeping the dim/disabled steps in proportion.</p>
+        <p>Shift all of Live's text brightness up or down.</p>
         <div class="sliderrow"><label>Brightness</label><input type="range" class="grad" id="textL" min="-40" max="40" value="0" style="background:linear-gradient(90deg,#0a0a0a,#f0f0f0)"><span class="val" id="textLv">0</span><span class="rowsw" id="textLSw" title="Dark to light"></span></div>
       </div>
       <div class="grp">
         <h3>Accents</h3>
-        <p>Each swatch sets every role that shares that colour at once.</p>
+        <p>Update every use of an accent colour across the theme.</p>
         <div id="roleSwatches"></div>
       </div>
       <div class="grp" id="imgpanel">
-        <h3>From image</h3>
-        <p>Generate a palette from a photo, drag the swatches to adjust.</p>
+        <h3>Theme from image</h3>
+        <p>Generate a palette from a photo, drag the swatches around to adjust. Edited colours outside of a photo's palette display as an X.</p>
         <div class="drop" id="imgdrop">Drop an image or click to choose</div>
         <input id="imgfile" type="file" accept="image/*" hidden>
         <div class="stage" id="imgstage"><canvas id="imgcanvas"></canvas></div>
@@ -328,13 +330,12 @@ details.sec>summary .n{color:var(--dim);font-weight:400;font-size:11px;margin-le
       <h2 class="pane-title pvtitle">Preview</h2>
       <div class="pvtabs"><span class="pvtab on" data-view="session">Session</span><span class="pvtab" data-view="arr">Arrangement</span></div>
       <div id="pv"></div>
-      <div class="pvcaption">Live preview - Session and Arrangement views, with a MIDI note editor under the Clip tab and an all-keys grid to catch any stray colour. Reflects the headline colours; every key is editable under Advanced.</div>
     </div>
 
     <div class="pane adv-pane">
-      <h2>Advanced - every key</h2>
+      <h2>Advanced</h2>
       <input class="search" id="search" placeholder="Filter keys&hellip;" spellcheck="false">
-      <p class="advhint">Ordered by how often stock themes change each area. VU meters and raw values at the end are near-constant across all 43 stock themes - effectively noise. All edits save back faithfully.</p>
+      <p class="advhint">Remap every colour in Live's UI, use this to fine tune your theme after setting up Basic options to the left.</p>
       <div id="secs"></div>
     </div>
   </div>
@@ -824,46 +825,58 @@ function buildRoleSwatches(){
     const sw=document.createElement("input"); sw.type="color"; sw.className="bigsw"; sw.value=rgbOf(first);
     const hx=document.createElement("input"); hx.type="text"; hx.className="hexin"; hx.value=rgbOf(first); hx.spellcheck=false;
     const cnt=document.createElement("span"); cnt.className="count"; cnt.textContent=present.length+" key"+(present.length>1?"s":"");
-    const apply=hex=>{ const p=parseHex(hex); if(!p) return; present.forEach(k=>{ const cur=parseHex(model[k].el.getAttribute("Value")); setKey(k, toHex(p.r,p.g,p.b, cur?cur.a:"")); }); };
+    const apply=hex=>{ const p=parseHex(hex); if(!p) return; present.forEach(k=>{ const cur=parseHex(model[k].el.getAttribute("Value")); setKey(k, toHex(p.r,p.g,p.b, cur?cur.a:"")); }); markPaletteEdit(role.id,p); };
     sw.addEventListener("input",()=>{ hx.value=sw.value; apply(sw.value); });
     hx.addEventListener("change",()=>{ if(COLOR_RE.test(hx.value.trim())){ sw.value=rgbOf(hx.value.trim()); apply(hx.value.trim()); } else hx.value=sw.value; });
     wrap.append(lab,sw,hx,cnt); host.appendChild(wrap);
   });
 }
 function applyBasic(){
-  const dH=+$("#surfH").value, satOff=+$("#surfS").value/100, lOff=+$("#surfL").value/100, contrast=+$("#surfC").value/100;
-  $("#surfHv").textContent=(dH>0?"+":"")+dH+"°";
-  $("#surfSv").textContent=(satOff>0?"+":"")+Math.round(satOff*100);
+  // absolute base colour: hue + saturation set the surface family directly, over the loaded theme's lightness ladder
+  const hueAbs=((+$("#surfH").value%360)+360)%360, satAbs=clamp01(+$("#surfS").value/100),
+        lOff=+$("#surfL").value/100, contrast=+$("#surfC").value/100;
+  $("#surfHv").textContent=Math.round(hueAbs)+"°";
+  $("#surfSv").textContent=Math.round(satAbs*100);
   $("#surfLv").textContent=(lOff>0?"+":"")+Math.round(lOff*100);
   $("#surfCv").textContent=(contrast>0?"+":"")+Math.round(contrast*100);
   const bp=parseHex(baseline["SurfaceBackground"]); const baseL=bp?rgb2hsl(bp.r,bp.g,bp.b).l:0.5;
-  let repHue=0;
-  // surface family: shift the base hue/sat/brightness, and spread the lightness ladder (contrast) around the base
   SURFACE.forEach(name=>{ if(!model[name]) return; const p=parseHex(baseline[name]); if(!p) return;
-    let {h,s,l}=rgb2hsl(p.r,p.g,p.b); const ladder=l-baseL;
-    h=h+dH; s=clamp01(s+satOff); l=clamp01(baseL+lOff+ladder*(1+contrast));
-    if(name==="SurfaceBackground") repHue=h;
-    const [r,g,b]=hsl2rgb(h,s,l); setKey(name, toHex(r,g,b,p.a)); });
+    const ladder=rgb2hsl(p.r,p.g,p.b).l-baseL;              // keep each key's rung
+    const L=clamp01(baseL+lOff+ladder*(1+contrast));
+    const [r,g,b]=hsl2rgb(hueAbs,satAbs,L); setKey(name, toHex(r,g,b,p.a)); });
   // text family: one brightness control shifts the whole text ladder
   const tOff=+$("#textL").value/100;
   $("#textLv").textContent=(tOff>0?"+":"")+Math.round(tOff*100);
   TEXT.forEach(name=>{ if(!model[name]) return; const p=parseHex(baseline[name]); if(!p) return;
     let {h,s,l}=rgb2hsl(p.r,p.g,p.b); l=clamp01(l+tOff);
     const [r,g,b]=hsl2rgb(h,s,l); setKey(name, toHex(r,g,b,p.a)); });
-  paintSurfSwatches(repHue);
+  paintSurfSwatches(hueAbs);
 }
 const applySurface=applyBasic;
 function paintSurfSwatches(repHue){
+  // each swatch previews the result and chains off the sliders before it
   const hue=((repHue%360)+360)%360;
-  const sH=$("#surfHueSw"); if(sH) sH.style.background="hsl("+hue+",75%,55%)";
-  const sS=$("#surfSSw"); if(sS) sS.style.background="linear-gradient(90deg,#808080,hsl("+hue+",75%,50%))";
-  const sL=$("#surfLSw"); if(sL) sL.style.background="linear-gradient(90deg,#0a0a0a,#f0f0f0)";
-  const slS=$("#surfS"); if(slS) slS.style.background="linear-gradient(90deg,#808080,hsl("+hue+",90%,50%))";
+  const satPos=clamp01(+$("#surfS").value/100);     // 0..1 absolute saturation
+  const lPos=(+$("#surfL").value+40)/80;            // 0..1 brightness level
+  const cPos=(+$("#surfC").value+60)/120;           // 0..1 contrast amount
+  const grey=v=>{ const n=Math.round(clamp01(v)*255); return "rgb("+n+","+n+","+n+")"; };
+  // Hue - selected hue, always fully saturated
+  const sH=$("#surfHueSw"); if(sH) sH.style.background="hsl("+hue+",100%,50%)";
+  // Saturation - the hue at the selected saturation (grey -> full hue)
+  const sS=$("#surfSSw"); if(sS) sS.style.background="hsl("+hue+","+Math.round(satPos*100)+"%,50%)";
+  // Brightness - a single grey at the slider position (black -> white)
+  const sL=$("#surfLSw"); if(sL) sL.style.background=grey(lPos);
+  // Contrast - flat grey at the brightness level when low; widens to a hard dark/light split when high
+  const sC=$("#surfCSw"); if(sC){ const spread=cPos*0.5, soft=Math.round((1-cPos)*22);
+    sC.style.background="linear-gradient(90deg,"+grey(lPos-spread)+" "+(50-soft)+"%,"+grey(lPos+spread)+" "+(50+soft)+"%)"; }
+  // Saturation track - grey -> full hue at the current hue
+  const slS=$("#surfS"); if(slS) slS.style.background="linear-gradient(90deg,#808080,hsl("+hue+",100%,50%))";
 }
 function resetSimpleControls(){
-  ["surfH","surfS","surfL","surfC","textL"].forEach(id=>{ const el=$("#"+id); if(el) el.value=0; });
-  $("#surfHv").textContent="0°"; $("#surfSv").textContent="0"; $("#surfLv").textContent="0";
-  $("#surfCv").textContent="0"; $("#textLv").textContent="0";
+  // Hue/Saturation default to the loaded theme's own surface base; Brightness/Contrast/Text are offsets at 0
+  const bp=parseHex(baseline["SurfaceBackground"]); const hs=bp?rgb2hsl(bp.r,bp.g,bp.b):{h:0,s:0};
+  const set=(id,v)=>{ const el=$("#"+id); if(el) el.value=v; };
+  set("surfH",Math.round(hs.h)); set("surfS",Math.round(hs.s*100)); set("surfL",0); set("surfC",0); set("textL",0);
 }
 
 /* ---- from-image palette generator ---- */
@@ -889,6 +902,14 @@ function medianCut(pix,k){            // pix: flat array of {r,g,b}; returns k a
     return {r:Math.round(r/b.length),g:Math.round(g/b.length),b:Math.round(bl/b.length),pop:b.length}; });
 }
 function hueDist(a,b){ let d=Math.abs(a-b)%360; return d>180?360-d:d; }
+// is a colour present in the loaded image (within per-channel tolerance)?
+function colourInImage(r,g,b,per){ if(!imgData) return false; const tol=per*per*3,d=imgData.data;
+  for(let i=0;i<d.length;i+=4){ if(d[i+3]<128) continue; if((d[i]-r)**2+(d[i+1]-g)**2+(d[i+2]-b)**2<=tol) return true; } return false; }
+// a role edited elsewhere feeds back to its palette slot; off-palette (hand-picked) slots show an X
+const ROLE_SLOT={highlight:1,secondary:2,selection:3,play:4};
+function markPaletteEdit(roleId,p){ const i=ROLE_SLOT[roleId]; if(i==null||!imgSlots.length) return;
+  imgSlots[i].r=p.r; imgSlots[i].g=p.g; imgSlots[i].b=p.b; imgSlots[i].off=!colourInImage(p.r,p.g,p.b,30);
+  renderStrip(); }
 // fixed slot order - each slot always drives the same UI role, so moving a dot only ever changes its own target
 const SLOT_ROLES=[
  {k:"surface",   lab:"Surface"},
@@ -904,17 +925,54 @@ function repPixel(c){                   // nearest image pixel to colour c -> no
     if(d<bd){bd=d;bx=x;by=y;} }
   return {x:bx/imgW,y:by/imgH};
 }
-function assignSlots(pal){              // bijective: map extracted colours onto the fixed roles, once
-  const cand=pal.map(c=>{ const o=rgb2hsl(c.r,c.g,c.b); return {r:c.r,g:c.g,b:c.b,pop:c.pop,h:o.h,s:o.s,l:o.l}; });
-  const used=new Array(cand.length).fill(false);
-  const take=score=>{ let bi=-1,best=-1e9; cand.forEach((c,i)=>{ if(used[i])return; const v=score(c); if(v>best){best=v;bi=i;} });
-    if(bi<0){ cand.forEach((c,i)=>{ const v=score(c); if(v>best){best=v;bi=i;} }); } else used[bi]=true; return cand[bi]; };
-  const surface=take(c=>c.pop);                                  // most prevalent = backdrop
-  const highlight=take(c=>c.s*Math.sqrt(c.pop));                 // most vivid
-  const secondary=take(c=>hueDist(c.h,highlight.h)*c.s);         // vivid + hue-distinct from highlight
-  const selection=take(c=>(c.h>=175&&c.h<=265?100:0)+c.s);      // prefer cool, else vivid
-  const functional=take(c=>c.s);                                 // remaining vividness source
-  return [surface,highlight,secondary,selection,functional].map(c=>{ const p=repPixel(c); return {x:p.x,y:p.y,r:c.r,g:c.g,b:c.b}; });
+// salient accent candidates: a small vivid feature "punches above its pixel count", especially when it
+// contrasts the dominant tone. Bin by hue, weight by saturation (squared) and mid-tone-ness, gate out
+// specks, then boost hues that sit far from the mood colour so a blue boat in an orange photo survives.
+function salientColours(){
+  const BINS=36, d=imgData.data;
+  const sal=new Array(BINS).fill(0), cnt=new Array(BINS).fill(0),
+        sr=new Array(BINS).fill(0), sg=new Array(BINS).fill(0), sb=new Array(BINS).fill(0);
+  let total=0;
+  for(let i=0;i<d.length;i+=4){ if(d[i+3]<128) continue; total++;
+    const r=d[i],g=d[i+1],b=d[i+2]; const {h,s,l}=rgb2hsl(r,g,b);
+    if(s<0.18) continue;                              // neutral: not an accent candidate
+    const w=s*s*(1-Math.abs(l-0.5)*0.7);             // vivid mid-tones weigh most
+    if(w<=0) continue;
+    const bi=Math.min(BINS-1,Math.floor(h/360*BINS));
+    sal[bi]+=w; cnt[bi]++; sr[bi]+=r*w; sg[bi]+=g*w; sb[bi]+=b*w;
+  }
+  let dbi=0,dc=-1; cnt.forEach((c,i)=>{ if(c>dc){dc=c;dbi=i;} });   // dominant saturated hue = the "mood"
+  const domHue=(dbi+0.5)/BINS*360;
+  const floor=Math.max(4,total*0.003);               // real feature, not a stray speck (~0.3%)
+  const cands=[];
+  for(let i=0;i<BINS;i++){ if(cnt[i]<floor||sal[i]<=0) continue;
+    const r=Math.round(sr[i]/sal[i]),g=Math.round(sg[i]/sal[i]),b=Math.round(sb[i]/sal[i]);
+    const o=rgb2hsl(r,g,b);
+    const score=sal[i]*(1+hueDist(o.h,domHue)/180*1.6);  // contrast with the mood boosts salience
+    cands.push({r,g,b,h:o.h,s:o.s,l:o.l,score});
+  }
+  return cands.sort((a,b)=>b.score-a.score);
+}
+function assignSlots(pix){              // Surface = prevalence; accents = salience + max hue-spread
+  const pal=medianCut(pix,6).map(c=>{ const o=rgb2hsl(c.r,c.g,c.b); return {r:c.r,g:c.g,b:c.b,pop:c.pop,h:o.h,s:o.s,l:o.l}; });
+  const surface=pal.reduce((a,b)=>b.pop>a.pop?b:a);               // most prevalent = backdrop
+  let acc=salientColours();
+  if(!acc.length) acc=pal.filter(c=>c.s>=0.12).sort((a,b)=>b.s-a.s);  // muted image: fall back to palette
+  if(!acc.length) acc=[surface];
+  // greedy max-spread: first by salience, then farthest hue from everything already chosen
+  const picked=[acc[0]];
+  while(picked.length<4 && picked.length<acc.length){
+    let best=null,bv=-1;
+    for(const c of acc){ if(picked.includes(c)) continue;
+      const dmin=Math.min(...picked.map(q=>hueDist(c.h,q.h)));
+      const v=dmin*Math.sqrt(c.score||c.s||0.1); if(v>bv){bv=v;best=c;} }
+    if(!best) break; picked.push(best);
+  }
+  const hi=picked[0], rest=picked.slice(1);
+  const sel=rest.find(c=>c.h>=175&&c.h<=265) || rest[0] || hi;    // selection prefers cool
+  const sec=rest.find(c=>c!==sel) || rest[0] || hi;
+  const fnl=[...picked].sort((a,b)=>b.s-a.s)[0] || hi;            // vividness source
+  return [surface,hi,sec,sel,fnl].map(c=>{ const p=repPixel(c); return {x:p.x,y:p.y,r:c.r,g:c.g,b:c.b}; });
 }
 function loadImage(src){
   const im=new Image();
@@ -926,7 +984,7 @@ function loadImage(src){
     imgData=octx.getImageData(0,0,imgW,imgH);
     const pix=[]; for(let i=0;i<imgData.data.length;i+=4){ if(imgData.data[i+3]<128) continue;
       pix.push({r:imgData.data[i],g:imgData.data[i+1],b:imgData.data[i+2]}); }
-    imgSlots=assignSlots(medianCut(pix,IMG_K));
+    imgSlots=assignSlots(pix);
     const cv=$("#imgcanvas"); cv.width=imgW; cv.height=imgH;
     cv.getContext("2d").putImageData(imgData,0,0);
     $("#imgstage").classList.add("has"); $("#imggen").disabled=false;
@@ -948,7 +1006,8 @@ function renderDots(){
 function renderStrip(){
   const strip=$("#imgstrip"); strip.innerHTML="";
   imgSlots.forEach((s,i)=>{ const hex=toHex(s.r,s.g,s.b,"");
-    strip.insertAdjacentHTML("beforeend",'<i style="background:'+hex+'" title="'+SLOT_ROLES[i].lab+' '+hex+'"><b>'+(i+1)+'</b><span>'+SLOT_ROLES[i].lab+'</span></i>'); });
+    strip.insertAdjacentHTML("beforeend",
+      '<div class="sw"><span class="col" style="background:'+hex+'" title="'+SLOT_ROLES[i].lab+' '+hex+(s.off?' (edited - not in image)':'')+'"><b>'+(i+1)+'</b>'+(s.off?'<span class="x">&#10005;</span>':'')+'</span><label>'+SLOT_ROLES[i].lab+'</label></div>'); });
 }
 let dragDot=null, genRAF=0;
 function liveGen(){ if(genRAF) return; genRAF=requestAnimationFrame(()=>{ genRAF=0; generateFromImage(); }); }
@@ -957,7 +1016,7 @@ function dotMove(e){
   const r=$("#imgcanvas").getBoundingClientRect();
   const nx=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)), ny=Math.max(0,Math.min(1,(e.clientY-r.top)/r.height));
   const i=+dragDot.dataset.i, c=sampleAt(nx,ny);
-  imgSlots[i]={x:nx,y:ny,r:c.r,g:c.g,b:c.b};
+  imgSlots[i]={x:nx,y:ny,r:c.r,g:c.g,b:c.b,off:false};
   dragDot.style.left=(nx*100)+"%"; dragDot.style.top=(ny*100)+"%"; dragDot.style.background="rgb("+c.r+","+c.g+","+c.b+")";
   renderStrip(); liveGen();            // live preview update
 }
@@ -966,11 +1025,10 @@ function generateFromImage(){
   const hsl=s=>{ const o=rgb2hsl(s.r,s.g,s.b); return {h:o.h,s:o.s,l:o.l}; };
   const surf=hsl(imgSlots[0]), hi=imgSlots[1], sec=imgSlots[2], sel=imgSlots[3], fn=hsl(imgSlots[4]);
   const surfSat = Math.min(0.42, surf.s*0.5);   // tinted greys; a near-grey surface slot -> near-neutral theme
-  // 1) re-tint the surface baseline, preserving each key's lightness (the ladder)
-  SURFACE.forEach(name=>{ if(!model[name]) return; const p=parseHex(baseline[name]); if(!p) return;
-    const {l}=rgb2hsl(p.r,p.g,p.b); const [r,g,b]=hsl2rgb(surf.h,surfSat,l);
-    baseline[name]=toHex(r,g,b,p.a); });
-  resetSimpleControls(); applyBasic();          // rebuilds surfaces+text from the new baseline at 0 offsets
+  // 1) surfaces: drive the Basic sliders to the image's base hue/sat (brightness/contrast neutral)
+  $("#surfH").value=Math.round(surf.h); $("#surfS").value=Math.round(surfSat*100);
+  $("#surfL").value=0; $("#surfC").value=0;
+  applyBasic();
   // 2) accents - fixed slots
   const setRole=(id,c)=>{ const role=ROLES.find(r=>r.id===id); if(!role) return;
     role.keys.filter(k=>model[k]).forEach(k=>{ const cur=parseHex(model[k].el.getAttribute("Value")); setKey(k, toHex(c.r,c.g,c.b, cur?cur.a:"")); }); };
@@ -1240,7 +1298,15 @@ loadThemeText($("#default-theme").textContent.trim(), null);
     pv.querySelectorAll(".view").forEach(v=>v.classList.toggle("on",v.classList.contains(id==="session"?"vsession":"varr"))); }));
   pv.addEventListener("click",e=>{ const el=e.target.closest("[data-key]"); if(el) highlightKey(el.dataset.key); });
   applyAllVars();
+  fitPreview();
 })();
+// scale the preview to fill its column (up or down); the Basic/Advanced panes stay fixed width
+function fitPreview(){
+  const pane=document.querySelector(".preview-pane"); if(!pane) return;
+  const avail=pane.clientWidth-36;                 // 18px padding each side
+  pv.style.zoom=Math.max(0.28,Math.min(2,avail/1100));
+}
+window.addEventListener("resize",fitPreview);
 </script>
 </body>
 </html>
