@@ -4,6 +4,10 @@ A single-file browser editor/generator for Ableton Live 12 `.ask` themes. Open t
 
 Instead of hand-editing ~290 raw colour keys, it drives the whole UI from a handful of HSV relationships and keeps every key editable underneath.
 
+![Theme-O-Matic: a basic dark theme and three generated from photos](showcase.png)
+
+*Top-left: a stock dark theme. The other three are generated from photos (source shown in each panel).*
+
 ---
 
 ## usage
