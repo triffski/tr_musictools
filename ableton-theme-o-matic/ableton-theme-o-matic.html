@@ -321,9 +321,10 @@ details.sec>summary .n{color:var(--dim);font-weight:400;font-size:11px;margin-le
         <h3><span>Accents</span><button class="lock" data-lock="accents" title="Lock Accents - keep these while loading other themes"></button></h3>
         <p>Update every use of an accent colour across the theme.</p>
         <div id="roleSwatches"></div>
+        <div class="resetrow"><span>Reset to:</span><button class="reset" data-areset="loaded">Loaded</button><button class="reset" data-areset="default">Default</button></div>
       </div>
       <div class="grp" id="imgpanel">
-        <h3>Theme from image</h3>
+        <h3>From image</h3>
         <p>Generate a palette from a photo, drag the swatches around to adjust.</p>
         <p>Edited colours outside of a photo's palette display as an X.</p>
         <div class="drop" id="imgdrop">Drop an image or click to choose</div>
@@ -1534,7 +1535,17 @@ function colourInImage(r,g,b,per){ if(!imgData) return false; const tol=per*per*
 const ROLE_SLOT={highlight:1,secondary:2,selection:3,play:4};
 function markPaletteEdit(roleId,p){ const i=ROLE_SLOT[roleId]; if(i==null||!imgSlots.length) return;
   imgSlots[i].r=p.r; imgSlots[i].g=p.g; imgSlots[i].b=p.b; imgSlots[i].off=!colourInImage(p.r,p.g,p.b,30);
-  renderStrip(); }
+  renderStrip(); renderDots(); }
+// Surface swatch follows the applied surface colour; an edit away from the photo shows an X (the pick for re-apply is kept separate)
+function syncSurfaceSlot(){
+  if(!imgSlots.length || !imgData || !model["SurfaceBackground"]) return;
+  const p=parseHex(model["SurfaceBackground"].el.getAttribute("Value")); if(!p) return;
+  imgSlots[0].r=p.r; imgSlots[0].g=p.g; imgSlots[0].b=p.b; imgSlots[0].off=!colourInImage(p.r,p.g,p.b,30);
+  renderStrip(); renderDots();
+}
+// update one dot in place (safe during a drag, unlike a full renderDots)
+function updateDot(i){ const d=document.querySelector('#imgpanel .dot[data-i="'+i+'"]'); if(!d) return;
+  const s=imgSlots[i], dc=s.pick||s; d.style.background="rgb("+dc.r+","+dc.g+","+dc.b+")"; d.textContent=s.off?"✕":(i+1); d.classList.toggle("off",!!s.off); }
 // fixed slot order - each slot always drives the same UI role, so moving a dot only ever changes its own target
 const SLOT_ROLES=[
  {k:"surface",   lab:"Surface"},
@@ -1597,7 +1608,7 @@ function assignSlots(pix){              // Surface = prevalence; accents = salie
   const sel=rest.find(c=>c.h>=175&&c.h<=265) || rest[0] || hi;    // selection prefers cool
   const sec=rest.find(c=>c!==sel) || rest[0] || hi;
   const fnl=[...picked].sort((a,b)=>b.s-a.s)[0] || hi;            // vividness source
-  return [surface,hi,sec,sel,fnl].map(c=>{ const p=repPixel(c); return {x:p.x,y:p.y,r:c.r,g:c.g,b:c.b}; });
+  return [surface,hi,sec,sel,fnl].map((c,i)=>{ const p=repPixel(c); const o={x:p.x,y:p.y,r:c.r,g:c.g,b:c.b,off:false}; if(i===0) o.pick={r:c.r,g:c.g,b:c.b}; return o; });
 }
 function loadImage(src){
   const im=new Image();
@@ -1621,10 +1632,11 @@ function renderDots(){
   const stage=$("#imgstage");
   stage.querySelectorAll(".dot").forEach(d=>d.remove());
   imgSlots.forEach((s,i)=>{
-    const d=document.createElement("div"); d.className="dot"; d.dataset.i=i;
+    const d=document.createElement("div"); d.className="dot"+(s.off?" off":""); d.dataset.i=i;
     d.style.left=(s.x*100)+"%"; d.style.top=(s.y*100)+"%";
-    d.style.background="rgb("+s.r+","+s.g+","+s.b+")";
-    d.textContent=i+1; d.title=SLOT_ROLES[i].lab;
+    const dc=s.pick||s;                                  // dot shows the sampled pixel colour
+    d.style.background="rgb("+dc.r+","+dc.g+","+dc.b+")";
+    d.textContent=s.off?"✕":(i+1); d.title=SLOT_ROLES[i].lab+(s.off?" (edited - not in image)":"");
     stage.appendChild(d);
   });
 }
@@ -1642,18 +1654,23 @@ function dotMove(e){
   const nx=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)), ny=Math.max(0,Math.min(1,(e.clientY-r.top)/r.height));
   const i=+dragDot.dataset.i, c=sampleAt(nx,ny);
   imgSlots[i]={x:nx,y:ny,r:c.r,g:c.g,b:c.b,off:false};
+  if(i===0) imgSlots[i].pick={r:c.r,g:c.g,b:c.b};        // surface: this pixel is the new pick
   dragDot.style.left=(nx*100)+"%"; dragDot.style.top=(ny*100)+"%"; dragDot.style.background="rgb("+c.r+","+c.g+","+c.b+")";
+  dragDot.textContent=i+1; dragDot.classList.remove("off");
   renderStrip(); liveGen();            // live preview update
 }
 function generateFromImage(){
   if(imgSlots.length<IMG_K) return;
   const hsl=s=>{ const o=rgb2hsl(s.r,s.g,s.b); return {h:o.h,s:o.s,l:o.l}; };
-  const surf=hsl(imgSlots[0]), hi=imgSlots[1], sec=imgSlots[2], sel=imgSlots[3], fn=hsl(imgSlots[4]);
+  const surf=hsl(imgSlots[0].pick||imgSlots[0]), hi=imgSlots[1], sec=imgSlots[2], sel=imgSlots[3], fn=hsl(imgSlots[4]);
   const surfSat = Math.min(0.42, surf.s*0.5);   // tinted greys; a near-grey surface slot -> near-neutral theme
   // 1) surfaces: drive the Basic sliders to the image's base hue/sat (brightness/contrast neutral)
   $("#surfH").value=Math.round(surf.h); $("#surfS").value=Math.round(surfSat*100);
   $("#surfL").value=0; $("#surfC").value=0;
   applyBasic();
+  // reflect the applied surface in slot 0's swatch (pick kept separate for re-apply)
+  const sbNow=parseHex(model["SurfaceBackground"].el.getAttribute("Value"));
+  if(sbNow){ imgSlots[0].r=sbNow.r; imgSlots[0].g=sbNow.g; imgSlots[0].b=sbNow.b; imgSlots[0].off=false; }
   // 2) accents - fixed slots
   const setRole=(id,c)=>{ const role=ROLES.find(r=>r.id===id); if(!role) return;
     role.keys.filter(k=>model[k]).forEach(k=>{ const cur=parseHex(model[k].el.getAttribute("Value")); setKey(k, toHex(c.r,c.g,c.b, cur?cur.a:"")); }); };
@@ -1664,6 +1681,7 @@ function generateFromImage(){
       const {l}=rgb2hsl(p.r,p.g,p.b); const [r,g,b]=hsl2rgb(hue,fn.s,l); const cur=parseHex(model[k].el.getAttribute("Value")); setKey(k, toHex(r,g,b, cur?cur.a:"")); }); };
   funcRole("play",130); funcRole("record",0);
   buildRoleSwatches();
+  renderStrip(); updateDot(0);          // reflect applied surface (in-place dot update is drag-safe)
 }
 
 /* save */
@@ -1723,12 +1741,25 @@ document.addEventListener("keydown",e=>{
 $("#loadfile").addEventListener("change",e=>{ const f=e.target.files[0]; if(!f) return;
   const r=new FileReader(); r.onload=()=>loadThemeText(r.result, f.name); r.readAsText(f); e.target.value=""; });
 $("#save").addEventListener("click",save);
-["surfH","surfS","surfL","surfC","textL"].forEach(id=>$("#"+id).addEventListener("input",applyBasic));
+["surfH","surfS","surfL","surfC"].forEach(id=>$("#"+id).addEventListener("input",()=>{ applyBasic(); syncSurfaceSlot(); }));
+$("#textL").addEventListener("input",applyBasic);
 document.querySelectorAll("[data-reset]").forEach(btn=>btn.addEventListener("click",()=>{
   const t=btn.dataset.reset;
   if(t==="dark") loadThemeText($("#theme-dark").textContent.trim(),"Default Dark");
   else if(t==="light") loadThemeText($("#theme-light").textContent.trim(),"Default Light");
   else { resetSimpleControls(); applyBasic(); }   // "loaded" - back to the loaded theme's base
+}));
+// Accents reset - Default dark/light share the same accents, so one "Default" covers both
+function accentValuesFrom(src){ const m={};
+  if(src==="baseline"){ ROLES.forEach(r=>r.keys.forEach(k=>{ if(baseline[k]!=null) m[k]=baseline[k]; })); }
+  else { const d=new DOMParser().parseFromString($("#theme-dark").textContent.trim(),"application/xml");
+    ROLES.forEach(r=>r.keys.forEach(k=>{ const el=d.getElementsByTagName(k)[0]; if(el&&el.hasAttribute("Value")) m[k]=el.getAttribute("Value"); })); }
+  return m; }
+function applyAccents(map){ for(const k in map){ if(model[k]) setKey(k,map[k]); } buildRoleSwatches();
+  if(imgSlots.length){ ["highlight","secondary","selection","play"].forEach(id=>{ const role=ROLES.find(r=>r.id===id);
+    const k=role.keys.find(k=>model[k]); if(k) markPaletteEdit(id,parseHex(model[k].el.getAttribute("Value"))); }); } }
+document.querySelectorAll("[data-areset]").forEach(btn=>btn.addEventListener("click",()=>{
+  applyAccents(accentValuesFrom(btn.dataset.areset==="default" ? "theme" : "baseline"));
 }));
 document.querySelectorAll(".lock").forEach(btn=>{ btn.innerHTML=LOCK_OPEN;
   btn.addEventListener("click",()=>{ const sec=btn.dataset.lock; lockState[sec]=!lockState[sec];
