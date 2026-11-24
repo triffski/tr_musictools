@@ -2,6 +2,8 @@
 
 Small music tools - scripts, presets and utilities. One folder per tool, each with its own README.
 
+Live at **https://gh.triff.co** - theme-o-matic runs in the browser at [gh.triff.co/theme-o-matic](https://gh.triff.co/theme-o-matic/).
+
 ## tools
 
 | tool | what | runs in | status |

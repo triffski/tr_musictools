@@ -12,7 +12,7 @@ Instead of hand-editing ~290 raw colour keys, it drives the whole UI from a hand
 
 ## usage
 
-- Open `index.html` in a browser
+- Live at **https://gh.triff.co/theme-o-matic/**, or open `index.html` in a browser
 - **Load .ask** a theme, or **Browse folder** to step through a folder of them
 - Edit, then **Save .ask** - writes back in Live's exact format (byte-identical round-trip)
 - Drop the saved file in Live's Themes folder (the `ableton-themes-installer` tool in this repo restores them after an update)
