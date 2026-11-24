@@ -6,6 +6,7 @@ Small music tools - scripts, presets and utilities. One folder per tool, each wi
 
 | tool | what | runs in | status |
 |---|---|---|---|
+| [ableton-theme-editor](ableton-theme-editor/) | Browser editor for Live 12 `.ask` themes - HSV-driven, live preview, palette-from-photo | browser, offline | stable |
 | [ableton-themes-installer](ableton-themes-installer/) | Restores custom Ableton Live 12 themes after an update wipes them | macOS, bash | stable |
 | [mozorch](mozorch/) | Orchid-style chord player: one note in, voiced chord out | Mozaic (iOS AUv3) | v0.12 |
 
