@@ -54,7 +54,10 @@ h1{font-size:14px;margin:0;font-weight:600;letter-spacing:.3px;white-space:nowra
 
 /* simple controls */
 .grp{background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:14px;margin-bottom:12px}
-.grp h3{margin:0 0 4px;font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--dim);font-weight:600}
+.grp h3{margin:0 0 4px;font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--dim);font-weight:600;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.lock{background:none;border:0;cursor:pointer;color:var(--dim);padding:2px;display:inline-flex;align-items:center;opacity:.6;transition:opacity .12s,color .12s}
+.lock:hover{opacity:1}
+.lock.on{color:var(--accent);opacity:1}
 .grp p{margin:0 0 12px;color:var(--dim);font-size:11.5px;line-height:1.45}
 .sliderrow{display:grid;grid-template-columns:74px 1fr 38px 24px;align-items:center;gap:9px;margin:11px 0}
 .sliderrow input[type=range]{width:100%}
@@ -278,7 +281,7 @@ details.sec>summary .n{color:var(--dim);font-weight:400;font-size:11px;margin-le
 <body>
 <div class="app">
   <div class="toolbar">
-    <h1>Live&nbsp;12 Theme Generator</h1>
+    <h1>Live&nbsp;12 Theme-O-Matic</h1>
     <button class="btn" id="browseFolder">Browse folder&hellip;</button>
     <input id="loadfolder" type="file" webkitdirectory directory multiple hidden>
     <button id="prevTheme" class="navbtn" title="Previous (left arrow)" disabled>&lsaquo;</button>
@@ -297,7 +300,7 @@ details.sec>summary .n{color:var(--dim);font-weight:400;font-size:11px;margin-le
     <div class="pane simple-pane">
       <h2 class="pane-title">Basic</h2>
       <div class="grp">
-        <h3>Surfaces</h3>
+        <h3><span>Surfaces</span><button class="lock" data-lock="surfaces" title="Lock Surfaces - keep these while loading other themes"></button></h3>
         <p>Generate a theme from a base colour map it across all of Live. Adjust the global Hue and Saturation then use Brightness and Contrast to raise/lower and squash/expand the brightness.</p>
         <div class="sliderrow"><label>Hue</label><input type="range" class="grad" id="surfH" min="0" max="360" value="0" style="background:linear-gradient(90deg,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000)"><span class="val" id="surfHv">0&deg;</span><span class="rowsw" id="surfHueSw" title="Base hue at full saturation"></span></div>
         <div class="sliderrow"><label>Saturation</label><input type="range" class="grad" id="surfS" min="0" max="100" value="0"><span class="val" id="surfSv">0</span><span class="rowsw" id="surfSSw" title="Grey to full hue"></span></div>
@@ -306,12 +309,12 @@ details.sec>summary .n{color:var(--dim);font-weight:400;font-size:11px;margin-le
         <button class="reset" data-reset="surface">reset</button>
       </div>
       <div class="grp">
-        <h3>Text</h3>
+        <h3><span>Text</span><button class="lock" data-lock="text" title="Lock Text - keep these while loading other themes"></button></h3>
         <p>Shift all of Live's text brightness up or down.</p>
         <div class="sliderrow"><label>Brightness</label><input type="range" class="grad" id="textL" min="-40" max="40" value="0" style="background:linear-gradient(90deg,#0a0a0a,#f0f0f0)"><span class="val" id="textLv">0</span><span class="rowsw" id="textLSw" title="Dark to light"></span></div>
       </div>
       <div class="grp">
-        <h3>Accents</h3>
+        <h3><span>Accents</span><button class="lock" data-lock="accents" title="Lock Accents - keep these while loading other themes"></button></h3>
         <p>Update every use of an accent colour across the theme.</p>
         <div id="roleSwatches"></div>
       </div>
@@ -735,6 +738,7 @@ function updateHistButtons(){ const u=$("#undoBtn"), r=$("#redoBtn"); if(u) u.di
 function loadThemeText(txt, fname){
   doc = new DOMParser().parseFromString(txt, "application/xml");
   if(doc.querySelector("parsererror")){ alert("That file isn't valid XML."); return; }
+  const lockSnap = snapshotLocks();     // capture locked sections before wiping the model
   for(const k in model) delete model[k];
   for(const k in baseline) delete baseline[k];
   const theme = doc.querySelector("Theme") || doc.documentElement;
@@ -749,6 +753,7 @@ function loadThemeText(txt, fname){
   });
   if(fname) $("#fname").value = fname.replace(/\.ask$/i,"");
   buildAdvanced(); buildRoleSwatches(); resetSimpleControls(); applyAllVars(); applySurface();
+  applyLocks(lockSnap);                 // re-impose any locked sections over the freshly loaded theme
   resetHistory();
 }
 
@@ -835,10 +840,6 @@ function applyBasic(){
   // absolute base colour: hue + saturation set the surface family directly, over the loaded theme's lightness ladder
   const hueAbs=((+$("#surfH").value%360)+360)%360, satAbs=clamp01(+$("#surfS").value/100),
         lOff=+$("#surfL").value/100, contrast=+$("#surfC").value/100;
-  $("#surfHv").textContent=Math.round(hueAbs)+"°";
-  $("#surfSv").textContent=Math.round(satAbs*100);
-  $("#surfLv").textContent=(lOff>0?"+":"")+Math.round(lOff*100);
-  $("#surfCv").textContent=(contrast>0?"+":"")+Math.round(contrast*100);
   const bp=parseHex(baseline["SurfaceBackground"]); const baseL=bp?rgb2hsl(bp.r,bp.g,bp.b).l:0.5;
   SURFACE.forEach(name=>{ if(!model[name]) return; const p=parseHex(baseline[name]); if(!p) return;
     const ladder=rgb2hsl(p.r,p.g,p.b).l-baseL;              // keep each key's rung
@@ -846,13 +847,42 @@ function applyBasic(){
     const [r,g,b]=hsl2rgb(hueAbs,satAbs,L); setKey(name, toHex(r,g,b,p.a)); });
   // text family: one brightness control shifts the whole text ladder
   const tOff=+$("#textL").value/100;
-  $("#textLv").textContent=(tOff>0?"+":"")+Math.round(tOff*100);
   TEXT.forEach(name=>{ if(!model[name]) return; const p=parseHex(baseline[name]); if(!p) return;
     let {h,s,l}=rgb2hsl(p.r,p.g,p.b); l=clamp01(l+tOff);
     const [r,g,b]=hsl2rgb(h,s,l); setKey(name, toHex(r,g,b,p.a)); });
-  paintSurfSwatches(hueAbs);
+  syncBasicLabels();
 }
 const applySurface=applyBasic;
+// slider value labels + preview swatches, without recomputing theme colours
+function syncBasicLabels(){
+  const hueAbs=((+$("#surfH").value%360)+360)%360, satAbs=clamp01(+$("#surfS").value/100),
+        lOff=+$("#surfL").value/100, contrast=+$("#surfC").value/100, tOff=+$("#textL").value/100;
+  $("#surfHv").textContent=Math.round(hueAbs)+"°";
+  $("#surfSv").textContent=Math.round(satAbs*100);
+  $("#surfLv").textContent=(lOff>0?"+":"")+Math.round(lOff*100);
+  $("#surfCv").textContent=(contrast>0?"+":"")+Math.round(contrast*100);
+  $("#textLv").textContent=(tOff>0?"+":"")+Math.round(tOff*100);
+  paintSurfSwatches(hueAbs);
+}
+// section locks - keep a section's values while other theme values load
+const lockState={surfaces:false,text:false,accents:false};
+const LOCK_OPEN='<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M5 7V4.7A3 3 0 0 1 10.7 3.4" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="3.3" y="7" width="9.4" height="6.6" rx="1.4" fill="currentColor"/></svg>';
+const LOCK_SHUT='<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M5 7V4.7a3 3 0 0 1 6 0V7" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="3.3" y="7" width="9.4" height="6.6" rx="1.4" fill="currentColor"/></svg>';
+function snapshotLocks(){
+  const s={};
+  if(lockState.surfaces){ s.surfaces={}; SURFACE.forEach(k=>{ if(model[k]) s.surfaces[k]=model[k].el.getAttribute("Value"); });
+    s.surfSliders={H:$("#surfH").value,S:$("#surfS").value,L:$("#surfL").value,C:$("#surfC").value}; }
+  if(lockState.text){ s.text={}; TEXT.forEach(k=>{ if(model[k]) s.text[k]=model[k].el.getAttribute("Value"); }); s.textL=$("#textL").value; }
+  if(lockState.accents){ s.accents={}; ROLES.forEach(r=>r.keys.forEach(k=>{ if(model[k]) s.accents[k]=model[k].el.getAttribute("Value"); })); }
+  return s;
+}
+function applyLocks(s){
+  const put=obj=>{ for(const k in obj){ if(model[k]){ baseline[k]=obj[k]; setKey(k,obj[k]); } } };
+  if(s.surfaces){ $("#surfH").value=s.surfSliders.H; $("#surfS").value=s.surfSliders.S; $("#surfL").value=s.surfSliders.L; $("#surfC").value=s.surfSliders.C; put(s.surfaces); }
+  if(s.text){ $("#textL").value=s.textL; put(s.text); }
+  if(s.accents){ put(s.accents); buildRoleSwatches(); }
+  if(s.surfaces||s.text) syncBasicLabels();
+}
 function paintSurfSwatches(repHue){
   // each swatch previews the result and chains off the sliders before it
   const hue=((repHue%360)+360)%360;
@@ -1100,6 +1130,9 @@ $("#loadfile").addEventListener("change",e=>{ const f=e.target.files[0]; if(!f) 
 $("#save").addEventListener("click",save);
 ["surfH","surfS","surfL","surfC","textL"].forEach(id=>$("#"+id).addEventListener("input",applyBasic));
 $("[data-reset]").addEventListener("click",()=>{ resetSimpleControls(); applyBasic(); });
+document.querySelectorAll(".lock").forEach(btn=>{ btn.innerHTML=LOCK_OPEN;
+  btn.addEventListener("click",()=>{ const sec=btn.dataset.lock; lockState[sec]=!lockState[sec];
+    btn.classList.toggle("on",lockState[sec]); btn.innerHTML=lockState[sec]?LOCK_SHUT:LOCK_OPEN; }); });
 /* from-image wiring */
 $("#imgdrop").addEventListener("click",()=>$("#imgfile").click());
 $("#imgfile").addEventListener("change",e=>{ const f=e.target.files[0]; if(!f) return;
